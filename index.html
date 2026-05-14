@@ -124,7 +124,7 @@ body{background:#c8cdd4;display:flex;justify-content:center;font-family:'Hiragin
 
 /* ── Coupon (template base) ── */
 .coupon-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border-divider);}
-.coupon-link{font-size:14.96px;color:var(--brand);cursor:pointer;}
+.coupon-link{font-size:14.96px;color:#1e60b9;cursor:pointer;}
 
 /* ── Quote ── */
 .quote-title{padding:14px 16px 10px;font-size:20.57px;font-weight:600;color:var(--fg-primary);}
@@ -133,7 +133,7 @@ body{background:#c8cdd4;display:flex;justify-content:center;font-family:'Hiragin
 /* ── Summary ── */
 .cart-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;}
 .cart-title{font-size:20.57px;font-weight:600;display:flex;align-items:center;gap:6px;}
-.cart-edit{font-size:14.96px;color:var(--brand);}
+.cart-edit{font-size:14.96px;color:#1e60b9;}
 .sum-row{display:flex;justify-content:space-between;padding:6px 16px;font-size:14.96px;color:var(--fg-primary);}
 .sum-sec{font-size:13.09px;color:var(--fg-secondary);}
 .hr{height:1px;background:var(--border-divider);margin:8px 16px;}
@@ -212,7 +212,7 @@ body{background:#c8cdd4;display:flex;justify-content:center;font-family:'Hiragin
 .coupon-change-link{font-size:13.09px;color:#1e60b9;cursor:pointer;margin-top:4px;display:inline-block;}
 
 /* Discount row in summary */
-.sum-row.discount{color:var(--brand);}
+.sum-row.discount{color:#2f3740;}
 
 /* Coupon-change sheet list */
 .bsheet-list{overflow-y:auto;max-height:303px;}
@@ -223,8 +223,12 @@ body{background:#c8cdd4;display:flex;justify-content:center;font-family:'Hiragin
 .coupon-sheet-num{font-size:14.96px;font-weight:600;color:var(--fg-primary);line-height:21px;}
 .coupon-sheet-desc{font-size:13.09px;color:var(--fg-secondary);line-height:18px;margin-top:2px;}
 
-/* Code input sheet */
-.code-input-area{padding:16px;}
+/* Code input modal */
+.code-modal{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;}
+.code-modal.open{display:flex;}
+.code-modal-box{background:var(--bg-primary);border-radius:12px;width:calc(375px - 40px);padding:20px;box-shadow:0 8px 32px rgba(0,0,0,.22);position:relative;}
+.code-modal-title{font-size:15px;font-weight:700;color:var(--fg-primary);margin-bottom:14px;}
+.code-modal-close{position:absolute;right:12px;top:12px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--fg-secondary);font-size:18px;line-height:1;}
 .code-input-row{display:flex;gap:8px;align-items:center;}
 .code-input{flex:1;background:var(--bg-input);border:1.5px solid transparent;border-radius:var(--radius-sm);padding:10px 12px;font-size:14.96px;color:var(--fg-primary);outline:none;font-family:inherit;}
 .code-input:focus{border-color:var(--brand);background:#fff;}
@@ -540,11 +544,11 @@ function checkPw(){
         <span class="cart-edit">カートを編集</span>
       </div>
       <div class="sum-row"><span>商品合計</span><span>4,198円</span></div>
-      <div class="sum-row"><span>送料</span><span>0 円</span></div>
       <div class="sum-row discount" id="discountRow" style="display:none;">
-        <span id="discountLabel">クーポン割引</span>
+        <span id="discountLabel">クーポン利用</span>
         <span id="discountAmt">−80円</span>
       </div>
+      <div class="sum-row"><span>送料</span><span>0 円</span></div>
       <div class="hr"></div>
       <div class="total-row"><span class="total-lbl">ご請求額（税込）</span><span class="total-amt"><span id="totalAmt">4,118</span> 円</span></div>
       <div class="sum-row sum-sec"><span>10%対象</span><span id="tax10">4,118円</span></div>
@@ -615,13 +619,11 @@ function checkPw(){
   <button class="confirm-btn" onclick="confirmCouponChange()">確定</button>
 </div>
 
-<!-- Coupon code input bottom sheet -->
-<div class="bsheet" id="codeSheet">
-  <div class="bsheet-header">
-    <span class="bsheet-title">クーポンコードを入力</span>
-    <div class="bsheet-close" onclick="closeBsheet('codeSheet')">✕</div>
-  </div>
-  <div class="code-input-area">
+<!-- Coupon code input modal -->
+<div class="code-modal backdrop" id="codeModal" onclick="if(event.target===this)closeCodeModal()">
+  <div class="code-modal-box">
+    <div class="code-modal-title">クーポンコードを入力</div>
+    <div class="code-modal-close" onclick="closeCodeModal()">✕</div>
     <div class="code-input-row">
       <input class="code-input" id="codeInput" type="text" placeholder="クーポンコードを入力してください" onkeydown="if(event.key==='Enter')applyCode()">
       <button class="code-apply-btn" onclick="applyCode()">適用</button>
@@ -724,9 +726,9 @@ var discountMap = {
   threshold: 200,
 };
 var labelMap = {
-  product: '商品別クーポン割引',
-  new: '新規会員クーポン割引',
-  threshold: 'クーポン割引',
+  product: 'クーポン利用',
+  new: 'クーポン利用',
+  threshold: 'クーポン利用',
 };
 
 function getDiscount(){
@@ -797,9 +799,16 @@ document.getElementById('openCodeSheet').addEventListener('click', function(){
   document.getElementById('codeInput').value = '';
   document.getElementById('codeInput').classList.remove('error');
   document.getElementById('codeError').classList.remove('show');
-  openBsheet('codeSheet');
-  setTimeout(function(){ document.getElementById('codeInput').focus(); }, 380);
+  openCodeModal();
 });
+
+function openCodeModal(){
+  document.getElementById('codeModal').classList.add('open');
+  setTimeout(function(){ document.getElementById('codeInput').focus(); }, 100);
+}
+function closeCodeModal(){
+  document.getElementById('codeModal').classList.remove('open');
+}
 
 function applyCode(){
   var v = document.getElementById('codeInput').value.trim();
@@ -811,7 +820,7 @@ function applyCode(){
   }
   if (v.toUpperCase() === 'KAKU200') {
     inp.classList.remove('error'); err.classList.remove('show');
-    closeBsheet('codeSheet');
+    closeCodeModal();
     selectCoupon('new');
   } else {
     err.textContent = 'このクーポンコードは有効ではありません。';
