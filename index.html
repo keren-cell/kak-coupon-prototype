@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=375, initial-scale=1.0">
+<title>KAK Checkout — Coupon Prototype</title>
+<style>
+#pw-gate{position:fixed;inset:0;background:#f0f2f5;z-index:9999;display:flex;align-items:center;justify-content:center;}
+#pw-box{background:#fff;border-radius:16px;padding:32px 24px;width:300px;box-shadow:0 8px 32px rgba(0,0,0,.15);display:flex;flex-direction:column;gap:16px;align-items:center;}
+#pw-logo{font-size:22px;font-weight:800;color:#E8375A;letter-spacing:-.5px;}
+#pw-sub{font-size:12px;color:#5d646b;margin-top:-8px;}
+#pw-input{width:100%;border:1.5px solid #ddd;border-radius:8px;padding:10px 12px;font-size:15px;color:#2f3740;outline:none;font-family:inherit;box-sizing:border-box;}
+#pw-input:focus{border-color:#E8375A;}
+#pw-btn{width:100%;background:#E8375A;color:#fff;border:none;border-radius:8px;padding:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}
+#pw-err{font-size:12px;color:#E8375A;display:none;}
+</style>
+<style>
+/* ── Design Tokens (from Figma) ── */
+:root {
+  --fg-primary: #2f3740;
+  --fg-secondary: #5d646b;
+  --fg-success: #167805;
+  --fg-caution: #805c01;
+  --fg-danger: #c0392b;
+  --bg-primary: #ffffff;
+  --bg-page: #f0f2f5;
+  --bg-input: #eceff3;
+  --bg-interactive: #e8f0fc;
+  --border-divider: rgba(0,0,0,0.10);
+  --radius-sm: 8px;
+  --radius-full: 9999px;
+  --sp-xs: 4px;
+  --sp-sm: 8px;
+  --sp-md: 12px;
+  --sp-lg: 16px;
+  --brand: #E8375A;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{background:#c8cdd4;display:flex;justify-content:center;font-family:'Hiragino Sans','Hiragino Kaku Gothic ProN','ヒラギノ角ゴ ProN W3',-apple-system,sans-serif;font-size:15px;color:var(--fg-primary);}
+
+/* ── Phone frame ── */
+.phone{width:375px;height:100vh;overflow:hidden;position:relative;background:var(--bg-page);box-shadow:0 16px 56px rgba(0,0,0,.35);}
+
+/* ── Main scroll area ── */
+.scroll{height:calc(100vh - 64px);overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:20px;}
+.scroll::-webkit-scrollbar{display:none;}
+
+/* ── Header ── */
+.header{background:var(--bg-primary);padding:10px 16px 8px;border-bottom:1px solid var(--border-divider);}
+.logo-sub{font-size:8px;color:var(--brand);font-weight:600;letter-spacing:.3px;}
+.logo-main{font-size:20px;font-weight:800;color:var(--brand);line-height:1.1;letter-spacing:-.5px;}
+
+/* ── Card ── */
+.card{background:var(--bg-primary);margin-top:8px;}
+.card:first-child{margin-top:0;}
+
+/* ── Card section header ── */
+.sec-header{display:flex;justify-content:space-between;align-items:flex-start;padding:12px 16px;border-bottom:1px solid var(--border-divider);}
+.sec-title{font-size:20.57px;font-weight:600;color:var(--fg-primary);line-height:29px;}
+.sec-detail{display:flex;flex-direction:column;align-items:flex-end;gap:4px;padding-top:2px;}
+.sec-detail span{font-size:14.96px;font-weight:600;color:var(--fg-success);line-height:21px;}
+
+/* ── Address ── */
+.addr{padding:12px 16px 0;font-size:14.96px;color:var(--fg-primary);line-height:21px;}
+
+/* ── Field ── */
+.field-label-row{display:flex;align-items:center;gap:6px;padding:12px 16px 6px;font-size:14.96px;color:var(--fg-primary);font-weight:600;line-height:21px;}
+.req-badge{background:var(--brand);color:#fff;font-size:10px;padding:1px 6px;border-radius:3px;font-weight:600;}
+.phone-row{display:flex;align-items:center;gap:6px;padding:0 16px 10px;}
+.phone-seg{flex:1;background:var(--bg-input);border-radius:var(--radius-sm);padding:8px;font-size:14.96px;color:var(--fg-primary);text-align:center;line-height:21px;}
+.phone-sep{color:var(--fg-secondary);font-size:14px;}
+.note-text{padding:0 16px 14px;font-size:13.09px;color:var(--fg-secondary);line-height:18px;}
+
+/* ── Info banner ── */
+.info-banner{margin:0 16px 12px;padding:10px 12px;background:#EFF6FF;border-radius:8px;display:flex;align-items:center;gap:8px;font-size:14.96px;color:#1D4ED8;line-height:21px;}
+
+/* ── Radio row ── */
+.radio-row{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border-divider);}
+.radio-row:last-child{border-bottom:none;}
+.radio-dot{width:22px;height:22px;border-radius:50%;border:2px solid #ccc;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;}
+.radio-dot.on{border-color:var(--brand);background:var(--brand);}
+.radio-dot.on::after{content:'';width:8px;height:8px;border-radius:50%;background:#fff;}
+.radio-title{font-size:14.96px;font-weight:600;color:var(--fg-primary);line-height:21px;}
+.radio-desc{font-size:13.09px;color:var(--fg-secondary);margin-top:2px;line-height:18px;}
+
+/* ── Delivery time trigger ── */
+.time-trigger{display:flex;align-items:center;justify-content:space-between;padding:8px 8px 8px 8px;background:var(--bg-input);border-radius:var(--radius-sm);cursor:pointer;transition:filter .15s;user-select:none;}
+.time-trigger:active{filter:brightness(.95);}
+.time-label{font-size:14.96px;color:var(--fg-primary);line-height:21px;}
+.time-chevron{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.time-chevron svg{width:12px;height:16px;}
+.divider{height:1px;background:var(--border-divider);margin:16px 16px 0;}
+
+/* ── Product item ── */
+.product-item{padding:12px 16px 0;display:flex;gap:12px;}
+.prod-img{width:72px;height:72px;border-radius:6px;object-fit:cover;flex-shrink:0;}
+.prod-body{flex:1;display:flex;flex-direction:column;gap:8px;}
+.prod-name{font-size:14.96px;font-weight:600;color:var(--fg-primary);line-height:21px;}
+.prod-caution{font-size:11.22px;color:var(--fg-caution);line-height:16px;}
+.prod-price-row{display:flex;align-items:center;justify-content:space-between;}
+.prod-price{display:flex;align-items:baseline;gap:4px;}
+.prod-price-num{font-size:18px;font-weight:700;color:var(--fg-primary);line-height:23px;}
+.prod-price-unit{font-size:10.29px;font-weight:600;color:var(--fg-primary);line-height:14px;}
+.prod-price-per{font-size:11.22px;color:var(--fg-secondary);line-height:16px;}
+.heart-btn{width:40px;height:40px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.qty-row{display:flex;padding:10px 0 0 84px;font-size:13.09px;color:var(--fg-secondary);line-height:18px;padding-bottom:16px;}
+
+/* ── Option rows ── */
+.opt-sec-header{display:flex;align-items:flex-start;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border-divider);}
+.opt-sec-left{display:flex;flex-direction:column;gap:2px;}
+.opt-sec-title{font-size:20.57px;font-weight:600;color:var(--fg-primary);line-height:29px;}
+.opt-sec-sub{font-size:14.96px;color:var(--fg-secondary);line-height:21px;}
+.round-btn{width:28px;height:28px;border-radius:50%;background:var(--bg-interactive);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.opt-row{display:flex;align-items:center;padding:0 16px;height:52px;border-bottom:1px solid var(--border-divider);}
+.opt-row:last-child{border-bottom:none;}
+.opt-label{flex:1;font-size:14.96px;color:var(--fg-primary);line-height:21px;}
+.opt-val{font-size:14.96px;color:var(--fg-secondary);margin-right:8px;line-height:21px;}
+
+/* ── Payment ── */
+.pay-sec-header{display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:1px solid var(--border-divider);}
+.pay-sec-title{font-size:20.57px;font-weight:600;color:var(--fg-primary);line-height:33px;}
+.pay-radio-row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border-divider);}
+
+/* ── Coupon (template base) ── */
+.coupon-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border-divider);}
+.coupon-link{font-size:14.96px;color:var(--brand);cursor:pointer;}
+
+/* ── Quote ── */
+.quote-title{padding:14px 16px 10px;font-size:20.57px;font-weight:600;color:var(--fg-primary);}
+.quote-btn{margin:0 16px 0;border:1.5px solid var(--brand);border-radius:8px;padding:10px;text-align:center;color:var(--brand);font-size:14.96px;font-weight:600;}
+
+/* ── Summary ── */
+.cart-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;}
+.cart-title{font-size:20.57px;font-weight:600;display:flex;align-items:center;gap:6px;}
+.cart-edit{font-size:14.96px;color:var(--brand);}
+.sum-row{display:flex;justify-content:space-between;padding:6px 16px;font-size:14.96px;color:var(--fg-primary);}
+.sum-sec{font-size:13.09px;color:var(--fg-secondary);}
+.hr{height:1px;background:var(--border-divider);margin:8px 16px;}
+.total-row{display:flex;justify-content:space-between;align-items:baseline;padding:10px 16px;}
+.total-lbl{font-size:14.96px;font-weight:600;}
+.total-amt{font-size:20px;font-weight:800;}
+.age-box{margin:12px 16px;background:#FFF8E1;border-radius:8px;padding:12px;font-size:13.09px;color:var(--fg-primary);line-height:18px;}
+.age-check{display:flex;align-items:center;gap:10px;padding:10px 16px;}
+.check-sq{width:22px;height:22px;border-radius:4px;background:var(--brand);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.check-sq::after{content:'✓';color:#fff;font-size:13px;font-weight:700;}
+.terms{padding:8px 16px 16px;font-size:11.22px;color:var(--fg-secondary);line-height:1.8;}
+.terms a{color:var(--brand);}
+
+/* ── Bottom bar ── */
+.bottom-bar{position:absolute;bottom:0;left:0;right:0;height:64px;background:var(--bg-primary);border-top:1px solid var(--border-divider);display:flex;align-items:center;justify-content:space-between;padding:0 16px;z-index:20;}
+.bar-total-lbl{font-size:12px;color:var(--fg-secondary);}
+.bar-total-amt{font-size:18px;font-weight:800;color:var(--fg-primary);}
+.order-btn{background:var(--brand);color:#fff;border:none;border-radius:10px;padding:12px 22px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}
+
+/* ── Backdrop ── */
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;opacity:0;pointer-events:none;transition:opacity .3s ease;}
+.backdrop.open{opacity:1;pointer-events:all;}
+
+/* ── Bottom sheet ── */
+.bsheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(101%);width:375px;background:var(--bg-primary);border-radius:16px 16px 0 0;z-index:101;transition:transform .38s cubic-bezier(.32,.72,0,1);box-shadow:0 -6px 32px rgba(0,0,0,.18);overflow:hidden;}
+.bsheet.open{transform:translateX(-50%) translateY(0);}
+
+.bsheet-header{display:flex;align-items:center;justify-content:center;padding:16px 16px 14px;position:relative;border-bottom:1px solid var(--border-divider);}
+.bsheet-title{font-size:16px;font-weight:700;color:var(--fg-primary);}
+.bsheet-close{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--brand);font-size:22px;line-height:1;}
+
+.bsheet-cb{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border-divider);}
+.cb{width:18px;height:18px;border:2px solid #ccc;border-radius:3px;flex-shrink:0;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;}
+.cb.on{background:var(--brand);border-color:var(--brand);}
+.cb.on::after{content:'✓';color:#fff;font-size:11px;font-weight:700;}
+.cb-lbl{font-size:14.96px;color:var(--fg-primary);}
+.help-btn{margin-left:auto;width:24px;height:24px;border-radius:50%;border:1.5px solid #bbb;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--fg-secondary);}
+
+/* ── Picker ── */
+.picker{display:flex;height:220px;position:relative;overflow:hidden;}
+.picker-col{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;text-align:center;scroll-snap-type:y mandatory;padding:84px 0;}
+.picker-col::-webkit-scrollbar{display:none;}
+.picker-item{padding:12px 4px;font-size:14.96px;color:#2F3740;cursor:pointer;scroll-snap-align:center;line-height:21px;transition:color .15s,font-weight .15s,font-size .1s,background .15s;}
+.picker-item.sel{color:#2F3740;font-weight:700;font-size:16px;background:#f2f3f5;margin:0 -4px;padding-left:4px;padding-right:4px;}
+.picker-item.dim{color:#c9cdd4;pointer-events:none;}
+.picker-vdivider{width:1px;background:var(--border-divider);position:absolute;left:50%;top:0;bottom:0;}
+.picker-highlight{display:none;}
+
+.confirm-btn{display:block;width:calc(100% - 32px);margin:14px 16px 22px;background:var(--brand);color:#fff;border:none;border-radius:10px;padding:15px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;}
+
+/* ── Payment registered style ── */
+.pay-radio-row2{display:flex;align-items:center;gap:4px;}
+.reg-card{display:flex;align-items:center;gap:8px;border:1px solid #ced3d8;border-radius:8px;padding:8px;background:#fff;}
+.id-item2{display:flex;align-items:center;gap:8px;flex:1;min-width:0;}
+.id-name{font-size:13.09px;color:#2f3740;line-height:18px;}
+
+/* ════════════════════════════════════
+   COUPON MODULE — additional styles
+   ════════════════════════════════════ */
+
+/* Selectable coupon row */
+.coupon-option{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border-divider);cursor:pointer;}
+.coupon-option:last-child{border-bottom:none;}
+.coupon-option:active{background:#fafafa;}
+.coupon-option .radio-dot{margin-top:2px;}
+.coupon-option-body{flex:1;min-width:0;}
+.coupon-option-title{font-size:14.96px;font-weight:600;color:var(--fg-primary);line-height:21px;}
+.coupon-option-sub{font-size:13.09px;color:var(--fg-secondary);line-height:18px;margin-top:2px;}
+
+/* Product-coupon detail block (indented) */
+.coupon-product-list{display:none;margin-top:8px;border:1px solid var(--border-divider);border-radius:var(--radius-sm);overflow:hidden;}
+.coupon-product-item{padding:10px 12px;border-bottom:1px solid var(--border-divider);}
+.coupon-product-item:last-child{border-bottom:none;}
+.coupon-product-num{font-size:13.09px;font-weight:600;color:var(--fg-primary);line-height:18px;}
+.coupon-product-desc{font-size:13.09px;color:var(--fg-secondary);line-height:18px;margin-top:2px;}
+.coupon-change-link{font-size:13.09px;color:#1e60b9;cursor:pointer;margin-top:4px;display:inline-block;}
+
+/* Discount row in summary */
+.sum-row.discount{color:var(--brand);}
+
+/* Coupon-change sheet list */
+.bsheet-list{overflow-y:auto;max-height:303px;}
+.coupon-sheet-item{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border-divider);cursor:pointer;}
+.coupon-sheet-item:last-child{border-bottom:none;}
+.coupon-sheet-item:active{background:#fafafa;}
+.coupon-sheet-item .radio-dot{margin-top:2px;flex-shrink:0;}
+.coupon-sheet-num{font-size:14.96px;font-weight:600;color:var(--fg-primary);line-height:21px;}
+.coupon-sheet-desc{font-size:13.09px;color:var(--fg-secondary);line-height:18px;margin-top:2px;}
+
+/* Code input sheet */
+.code-input-area{padding:16px;}
+.code-input-row{display:flex;gap:8px;align-items:center;}
+.code-input{flex:1;background:var(--bg-input);border:1.5px solid transparent;border-radius:var(--radius-sm);padding:10px 12px;font-size:14.96px;color:var(--fg-primary);outline:none;font-family:inherit;}
+.code-input:focus{border-color:var(--brand);background:#fff;}
+.code-input.error{border-color:var(--fg-danger);}
+.code-apply-btn{background:var(--brand);color:#fff;border:none;border-radius:var(--radius-sm);padding:10px 16px;font-size:14.96px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
+.code-error{font-size:12px;color:var(--fg-danger);margin-top:6px;display:none;}
+.code-error.show{display:block;}
+</style>
+</head>
+<body>
+
+<!-- Password gate -->
+<div id="pw-gate">
+  <div id="pw-box">
+    <div id="pw-logo">カクヤス</div>
+    <div id="pw-sub">プロトタイプ — 閲覧にはパスワードが必要です</div>
+    <input id="pw-input" type="password" placeholder="パスワードを入力" onkeydown="if(event.key==='Enter')checkPw()">
+    <button id="pw-btn" onclick="checkPw()">入る</button>
+    <div id="pw-err">パスワードが違います</div>
+  </div>
+</div>
+<script>
+(function(){
+  if(localStorage.getItem('kak_auth')==='1'){
+    document.getElementById('pw-gate').style.display='none';
+  }
+})();
+function checkPw(){
+  var v=document.getElementById('pw-input').value;
+  if(v==='kakuyasu marketplace'){
+    localStorage.setItem('kak_auth','1');
+    document.getElementById('pw-gate').style.display='none';
+  } else {
+    document.getElementById('pw-err').style.display='block';
+    document.getElementById('pw-input').value='';
+    document.getElementById('pw-input').focus();
+  }
+}
+</script>
+
+<div class="phone">
+  <div class="scroll" id="scr">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="logo-sub">なんでも酒や</div>
+      <div class="logo-main">カクヤス</div>
+    </div>
+
+    <!-- お届け先 -->
+    <div class="card" style="margin-top:0;">
+      <div style="padding:12px 16px 0;font-size:20.57px;font-weight:600;color:var(--fg-primary);line-height:29px;">お届け先</div>
+      <div class="addr">
+        <div>〒114-0003 東京都北区豊島2-3-1</div>
+        <div>株式会社カクヤス</div>
+        <div>鈴木 一郎</div>
+      </div>
+      <div class="field-label-row">配達員が連絡可能な電話番号 <span class="req-badge">必須</span></div>
+      <div class="phone-row">
+        <div class="phone-seg">080</div>
+        <span class="phone-sep">ー</span>
+        <div class="phone-seg">1234</div>
+        <span class="phone-sep">ー</span>
+        <div class="phone-seg">5678</div>
+      </div>
+      <p class="note-text">※お届け時のトラブルを回避するため、冷やした商品をご希望のお客様へは事前に連絡をさせていただく場合がございます。※ご連絡がお取りできない際は、配達を致しかねる場合もございますので、予めご了承ください。</p>
+    </div>
+
+    <!-- 配送タイプ -->
+    <div class="card" style="margin-top:0;">
+      <div class="info-banner">
+        <span style="color:#3B82F6;font-size:16px;flex-shrink:0;">ⓘ</span>
+        最短お届け日が商品により異なります。
+      </div>
+      <div class="radio-row">
+        <div class="radio-dot on"></div>
+        <div><div class="radio-title">分割配送</div><div class="radio-desc">準備ができた商品ごとにお届け。早めに受け取れます。</div></div>
+      </div>
+      <div class="radio-row">
+        <div class="radio-dot"></div>
+        <div><div class="radio-title">まとめて配送</div><div class="radio-desc">すべての商品をまとめてお届け。受取の手間を減らせます。</div></div>
+      </div>
+    </div>
+
+    <!-- お届け詳細① -->
+    <div class="card">
+      <div class="sec-header">
+        <span class="sec-title">お届け詳細①</span>
+        <div class="sec-detail">
+          <span>カクヤス店舗</span>
+          <span>無料配送</span>
+        </div>
+      </div>
+
+      <div style="padding:16px 16px 0;">
+        <div class="time-trigger" id="timeTrigger">
+          <span class="time-label" id="timeLbl">本日 12月20日(金) ｜ 13〜14時にお届け</span>
+          <div class="time-chevron">
+            <svg viewBox="0 0 12 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2 6L6 2L10 6" stroke="#5d646b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M2 10L6 14L10 10" stroke="#5d646b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+        <div class="divider"></div>
+      </div>
+
+      <!-- Product 1 -->
+      <div class="product-item">
+        <img class="prod-img" src="https://www.figma.com/api/mcp/asset/3bd43738-5677-45f8-ac00-735cdbdd24e1" alt="商品" onerror="this.style.background='linear-gradient(135deg,#d4a843,#b8862e)';this.removeAttribute('src');">
+        <div class="prod-body">
+          <div class="prod-name">キリン 一番搾り 350ml缶【1ケース】</div>
+          <div class="prod-price-row">
+            <div class="prod-price">
+              <span class="prod-price-num">1,899</span>
+              <span class="prod-price-unit">円</span>
+            </div>
+            <div class="heart-btn">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="#ccc" stroke-width="1.5" fill="none"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="qty-row"><div>数量: 1</div></div>
+
+      <!-- Product 2 -->
+      <div class="product-item" style="border-top:1px solid var(--border-divider);">
+        <img class="prod-img" src="" alt="商品" onerror="this.style.background='linear-gradient(135deg,#2c5282,#1a365d)';this.removeAttribute('src');">
+        <div class="prod-body">
+          <div class="prod-name">キリン 本麒麟 500ml缶【1ケース】</div>
+          <div class="prod-price-row">
+            <div class="prod-price">
+              <span class="prod-price-num">2,299</span>
+              <span class="prod-price-unit">円</span>
+            </div>
+            <div class="heart-btn">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="#ccc" stroke-width="1.5" fill="none"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="qty-row"><div>数量: 1</div></div>
+
+      <!-- 配送オプション -->
+      <div style="border-top:1px solid var(--border-divider);">
+        <div class="opt-sec-header">
+          <div class="opt-sec-left">
+            <span class="opt-sec-title">配送オプション</span>
+            <span class="opt-sec-sub">置き配・包装・領収書など</span>
+          </div>
+          <div class="round-btn">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 10L8 6L12 10" stroke="#5d646b" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </div>
+        </div>
+        <div class="opt-row"><span class="opt-label">置き配</span><span class="opt-val">なし</span></div>
+        <div class="opt-row"><span class="opt-label">包装</span><span class="opt-val">なし</span></div>
+        <div class="opt-row"><span class="opt-label">のし</span><span class="opt-val">なし</span></div>
+        <div class="opt-row"><span class="opt-label">二本縛り</span><span class="opt-val">なし</span></div>
+        <div class="opt-row"><span class="opt-label">納品書への金額印字</span><span class="opt-val">なし</span></div>
+        <div class="opt-row"><span class="opt-label">お届け時に領収書発行</span><span class="opt-val">なし</span></div>
+        <div class="opt-row"><span class="opt-label">空き瓶回収</span><span class="opt-val">なし</span></div>
+        <div class="opt-row"><span class="opt-label">廃油回収</span><span class="opt-val">なし</span></div>
+      </div>
+    </div>
+
+    <!-- お支払い方法 -->
+    <div class="card">
+      <div class="pay-sec-header">
+        <span class="pay-sec-title">お支払い方法</span>
+        <div class="round-btn"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 10L8 6L12 10" stroke="#5d646b" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+      </div>
+
+      <div style="padding:16px;display:flex;flex-direction:column;gap:24px;">
+
+        <!-- クレジットカード -->
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="pay-radio-row2">
+            <div class="radio-dot on"></div>
+            <span class="radio-title">クレジットカード</span>
+          </div>
+          <div style="padding-left:28px;">
+            <div class="reg-card">
+              <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+                <div style="width:45px;height:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                  <span style="font-size:18px;font-weight:900;font-style:italic;color:#1A1F71;letter-spacing:-1px;">VISA</span>
+                </div>
+                <div style="flex:1;min-width:0;">
+                  <p style="font-size:14px;font-weight:700;color:#2f3740;line-height:18px;">…1234</p>
+                  <p style="font-size:12px;color:#5d646b;line-height:16px;">12/2029</p>
+                </div>
+              </div>
+              <p style="font-size:13.09px;color:#5d646b;line-height:18px;white-space:nowrap;margin-right:4px;">1回払い</p>
+              <div style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="12" height="16" viewBox="0 0 12 16" fill="none"><path d="M2 6L6 2L10 6" stroke="#5d646b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 10L6 14L10 10" stroke="#5d646b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 請求書払い -->
+        <div class="pay-radio-row2">
+          <div class="radio-dot"></div>
+          <span class="radio-title">請求書払い</span>
+        </div>
+
+        <!-- 代金引換 -->
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <div class="pay-radio-row2">
+            <div class="radio-dot"></div>
+            <div style="display:flex;align-items:center;gap:8px;flex:1;">
+              <img src="https://www.figma.com/api/mcp/asset/6be31716-707f-4651-b5e0-b43ee54d951b" width="20" height="20" style="flex-shrink:0;" alt="">
+              <span class="radio-title">代金引換（ギフト券のご利用含む）</span>
+            </div>
+          </div>
+          <div style="padding-left:32px;display:flex;flex-direction:column;gap:0;">
+            <p style="font-size:11.22px;color:#2f3740;line-height:16px;">※配送オプション「置き配」はご利用頂けません。</p>
+            <p style="font-size:11.22px;color:#2f3740;line-height:16px;">※ビール券等のギフト券のご利用には、1枚につき10円の手数料を頂戴する場合がございます。くわしくはこちら（<span style="color:#1e60b9;">リンク</span>）。</p>
+          </div>
+        </div>
+
+        <!-- ID決済 -->
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <p style="font-size:13.09px;font-weight:600;color:#2f3740;line-height:18px;">ID決済</p>
+            <p style="font-size:13.09px;color:#5d646b;line-height:18px;">お届けが複数日に分かれている場合はご利用いただけません。</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <div style="display:flex;gap:16px;">
+              <div class="id-item2"><div class="radio-dot"></div><span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;background:#E8375A;border-radius:4px;font-size:9px;font-weight:700;color:#fff;flex-shrink:0;">PayPay</span><span class="id-name">PayPay</span></div>
+              <div class="id-item2"><div class="radio-dot"></div><span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;background:#BF0000;border-radius:4px;font-size:9px;font-weight:700;color:#fff;flex-shrink:0;">R Pay</span><span class="id-name">楽天Pay</span></div>
+            </div>
+            <div style="display:flex;gap:16px;">
+              <div class="id-item2"><div class="radio-dot"></div><img src="https://www.figma.com/api/mcp/asset/80ecc9a8-68c3-4761-b834-5181d29ae470" width="28" height="28" style="border-radius:4px;flex-shrink:0;" alt="d払い" onerror="this.outerHTML='<span style=\'display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;background:#E8375A;border-radius:4px;font-size:9px;font-weight:700;color:#fff;flex-shrink:0;\'>d払い</span>'"><span class="id-name">d払い</span></div>
+              <div class="id-item2"><div class="radio-dot"></div><img src="https://www.figma.com/api/mcp/asset/0aa69bee-1781-4162-8603-382cc6893ff6" width="28" height="28" style="border-radius:4px;flex-shrink:0;" alt="au Pay" onerror="this.outerHTML='<span style=\'display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;background:#FF7700;border-radius:4px;font-size:8px;font-weight:700;color:#fff;flex-shrink:0;\'>au PAY</span>'"><span class="id-name">au Pay</span></div>
+            </div>
+            <div style="display:flex;gap:16px;">
+              <div class="id-item2"><div class="radio-dot"></div><img src="https://www.figma.com/api/mcp/asset/0009dc30-2ac0-44d2-951e-cd35fd2976b4" width="28" height="28" style="border-radius:4px;flex-shrink:0;" alt="メルペイ" onerror="this.outerHTML='<span style=\'display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;background:#009EE7;border-radius:4px;font-size:8px;font-weight:700;color:#fff;flex-shrink:0;\'>メルペイ</span>'"><span class="id-name">メルペイ</span></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════
+         クーポン MODULE (Figma AFTER design)
+         ════════════════════════════════════ -->
+    <div class="card">
+      <div class="coupon-header">
+        <span class="sec-title">利用可能なクーポン</span>
+        <span class="coupon-link" id="openCodeSheet">クーポンコードを入力</span>
+      </div>
+
+      <!-- 利用しない -->
+      <div class="coupon-option" id="opt-none" onclick="selectCoupon('none')">
+        <div class="radio-dot" id="rd-none"></div>
+        <div class="coupon-option-body">
+          <div class="coupon-option-title">利用しない</div>
+        </div>
+      </div>
+
+      <!-- 商品別クーポン（default selected） -->
+      <div class="coupon-option" id="opt-product" onclick="selectCoupon('product')">
+        <div class="radio-dot on" id="rd-product"></div>
+        <div class="coupon-option-body">
+          <div class="coupon-option-title">商品別クーポン：合計<span id="productTotal">80</span>円OFF</div>
+          <div class="coupon-option-sub">2点のクーポンをまとめて利用</div>
+          <div class="coupon-product-list" id="productDetail">
+            <div class="coupon-product-item">
+              <div class="coupon-product-num">クーポンNo.<span id="item1No">4247</span></div>
+              <div class="coupon-product-desc">キリン 一番搾り 350ml【1ケース】が<span id="item1Disc">40</span>円OFF！</div>
+              <span class="coupon-change-link" onclick="event.stopPropagation();openCouponSheet()">クーポンを変更する</span>
+            </div>
+            <div class="coupon-product-item">
+              <div class="coupon-product-num">クーポンNo.253</div>
+              <div class="coupon-product-desc">キリン 本麒麟 500ml【1ケース】が40円OFF！</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 新規会員登録プレゼント -->
+      <div class="coupon-option" id="opt-new" onclick="selectCoupon('new')">
+        <div class="radio-dot" id="rd-new"></div>
+        <div class="coupon-option-body">
+          <div class="coupon-option-title">新規会員登録プレゼント</div>
+          <div class="coupon-option-sub">2,000円以上ご購入で200円OFF（30日間有効）</div>
+        </div>
+      </div>
+
+      <!-- クーポンNo.4244 -->
+      <div class="coupon-option" id="opt-threshold" onclick="selectCoupon('threshold')">
+        <div class="radio-dot" id="rd-threshold"></div>
+        <div class="coupon-option-body">
+          <div class="coupon-option-title">クーポンNo.4244</div>
+          <div class="coupon-option-sub">10,000円(税込)以上購入で200円OFFクーポン！が200円OFF！</div>
+        </div>
+      </div>
+
+    </div>
+    <!-- /クーポン MODULE -->
+
+    <!-- 見積書 -->
+    <div class="card" style="padding-bottom:16px;">
+      <div class="quote-title">見積書をご希望の方</div>
+      <div class="quote-btn">見積書作成</div>
+    </div>
+
+    <!-- カート合計 -->
+    <div class="card">
+      <div class="cart-header">
+        <span class="cart-title">🛒 2点の商品</span>
+        <span class="cart-edit">カートを編集</span>
+      </div>
+      <div class="sum-row"><span>商品合計</span><span>4,198円</span></div>
+      <div class="sum-row"><span>送料</span><span>0 円</span></div>
+      <div class="sum-row discount" id="discountRow" style="display:none;">
+        <span id="discountLabel">クーポン割引</span>
+        <span id="discountAmt">−80円</span>
+      </div>
+      <div class="hr"></div>
+      <div class="total-row"><span class="total-lbl">ご請求額（税込）</span><span class="total-amt"><span id="totalAmt">4,118</span> 円</span></div>
+      <div class="sum-row sum-sec"><span>10%対象</span><span id="tax10">4,118円</span></div>
+      <div class="sum-row sum-sec" style="margin-bottom:8px;"><span>8%対象</span><span>0円</span></div>
+      <div class="age-box">20歳未満のお客様へのお酒の販売はしておりません。</div>
+      <div class="age-check"><div class="check-sq"></div><span style="font-size:14.96px;font-weight:600;color:var(--fg-primary);">20歳以上です</span></div>
+      <p class="terms">・「注文を確定」ボタンからご注文いただくことで、<a href="#">ご利用規約</a>および<a href="#">個人情報保護方針</a>に同意の上、商品をご注文したことになります。<br>・クレジットカード決済時に<a href="#">本人認証サービス（3Dセキュア2.0）</a>を導入しています。クレジットカード発行会社のページに移動しましたら、必要な情報を入力してください。</p>
+    </div>
+
+  </div><!-- /scroll -->
+
+  <!-- Bottom bar -->
+  <div class="bottom-bar">
+    <div><div class="bar-total-lbl">ご請求額（税込）</div><div class="bar-total-amt"><span id="barTotal">4,118</span> 円</div></div>
+    <button class="order-btn">注文を確定</button>
+  </div>
+
+</div>
+
+<!-- Backdrop -->
+<div class="backdrop" id="bd"></div>
+
+<!-- Time slot bottom sheet -->
+<div class="bsheet" id="bs">
+  <div class="bsheet-header">
+    <span class="bsheet-title">配達時間の選択</span>
+    <div class="bsheet-close" id="bsClose">✕</div>
+  </div>
+  <div class="bsheet-cb">
+    <div class="cb" id="earlyCb"></div>
+    <span class="cb-lbl">指定時間より前の受け取り OK</span>
+    <div class="help-btn">?</div>
+  </div>
+  <div class="picker">
+    <div class="picker-highlight"></div>
+    <div class="picker-vdivider"></div>
+    <div class="picker-col" id="dateCol">
+      <div class="picker-item dim">&nbsp;</div>
+      <div class="picker-item" data-d="本日 12月20日(金)">本日 12月20日(金)</div>
+      <div class="picker-item" data-d="12月21日(土)">12月21日(土)</div>
+      <div class="picker-item sel" data-d="12月22日(日)">12月22日(日)</div>
+      <div class="picker-item" data-d="12月23日(月)">12月23日(月)</div>
+      <div class="picker-item" data-d="12月24日(火)">12月24日(火)</div>
+      <div class="picker-item" data-d="12月25日(水)">12月25日(水)</div>
+      <div class="picker-item dim">&nbsp;</div>
+    </div>
+    <div class="picker-col" id="timeCol">
+      <div class="picker-item dim">10〜11時</div>
+      <div class="picker-item dim">11〜12時</div>
+      <div class="picker-item" data-t="12〜13時">12〜13時</div>
+      <div class="picker-item" data-t="13〜14時">13〜14時</div>
+      <div class="picker-item sel" data-t="14〜15時">14〜15時</div>
+      <div class="picker-item" data-t="15〜16時">15〜16時</div>
+      <div class="picker-item" data-t="置配 17〜21時">置配 17〜21時</div>
+      <div class="picker-item dim">&nbsp;</div>
+    </div>
+  </div>
+  <button class="confirm-btn" id="bsConfirm">確定</button>
+</div>
+
+<!-- Coupon change bottom sheet -->
+<div class="bsheet" id="couponSheet">
+  <div class="bsheet-header">
+    <span class="bsheet-title">クーポンを選択</span>
+    <div class="bsheet-close" onclick="closeBsheet('couponSheet')">✕</div>
+  </div>
+  <div class="bsheet-list" id="couponSheetList"></div>
+  <button class="confirm-btn" onclick="confirmCouponChange()">確定</button>
+</div>
+
+<!-- Coupon code input bottom sheet -->
+<div class="bsheet" id="codeSheet">
+  <div class="bsheet-header">
+    <span class="bsheet-title">クーポンコードを入力</span>
+    <div class="bsheet-close" onclick="closeBsheet('codeSheet')">✕</div>
+  </div>
+  <div class="code-input-area">
+    <div class="code-input-row">
+      <input class="code-input" id="codeInput" type="text" placeholder="クーポンコードを入力してください" onkeydown="if(event.key==='Enter')applyCode()">
+      <button class="code-apply-btn" onclick="applyCode()">適用</button>
+    </div>
+    <div class="code-error" id="codeError"></div>
+    <p style="font-size:12px;color:var(--fg-secondary);margin-top:8px;">有効なコード例：<strong>KAKU200</strong></p>
+  </div>
+</div>
+
+<script>
+// ── Time slot sheet (same as template) ──
+const scr     = document.getElementById('scr');
+const bd      = document.getElementById('bd');
+const bs      = document.getElementById('bs');
+const timeLbl = document.getElementById('timeLbl');
+
+let selDate = '12月22日(日)';
+let selTime = '14〜15時';
+
+function openTimeSheet() {
+  bs.classList.add('open');
+  bd.classList.add('open');
+  scr.style.overflow = 'hidden';
+  setTimeout(function() {
+    document.querySelector('#dateCol .sel').scrollIntoView({block:'center'});
+    document.querySelector('#timeCol .sel').scrollIntoView({block:'center'});
+  }, 60);
+}
+
+function closeTimeSheet() {
+  bs.classList.remove('open');
+  if (!document.querySelector('.bsheet.open')) {
+    bd.classList.remove('open');
+    scr.style.overflow = '';
+  }
+}
+
+document.getElementById('timeTrigger').addEventListener('click', openTimeSheet);
+document.getElementById('bsClose').addEventListener('click', closeTimeSheet);
+
+document.getElementById('earlyCb').addEventListener('click', function(){
+  this.classList.toggle('on');
+});
+
+function setupCol(col, attr, cb) {
+  col.querySelectorAll('.picker-item[' + attr + ']').forEach(function(item) {
+    item.addEventListener('click', function() {
+      col.querySelectorAll('.picker-item').forEach(function(i){ i.classList.remove('sel'); });
+      item.classList.add('sel');
+      item.scrollIntoView({behavior:'smooth', block:'center'});
+      cb(item.getAttribute(attr));
+    });
+  });
+}
+setupCol(document.getElementById('dateCol'), 'data-d', function(v){ selDate = v.replace('本日 ', ''); });
+setupCol(document.getElementById('timeCol'), 'data-t', function(v){ selTime = v; });
+
+document.getElementById('bsConfirm').addEventListener('click', function() {
+  timeLbl.textContent = selDate + ' ｜ ' + selTime + 'にお届け';
+  closeTimeSheet();
+});
+
+// ── Shared backdrop close ──
+bd.addEventListener('click', function() {
+  document.querySelectorAll('.bsheet.open').forEach(function(s){ s.classList.remove('open'); });
+  bd.classList.remove('open');
+  scr.style.overflow = '';
+});
+
+// ── Generic bsheet close ──
+function openBsheet(id) {
+  document.getElementById(id).classList.add('open');
+  bd.classList.add('open');
+  scr.style.overflow = 'hidden';
+}
+function closeBsheet(id) {
+  document.getElementById(id).classList.remove('open');
+  if (!document.querySelector('.bsheet.open')) {
+    bd.classList.remove('open');
+    scr.style.overflow = '';
+  }
+}
+
+// ── Coupon state ──
+var BASE = 4198;
+var current = 'product';
+var item1Idx = 0;
+var pendingIdx = 0;
+
+var item1Coupons = [
+  { no:'4247', disc:40, desc:'キリン 一番搾り 350ml【1ケース】が40円OFF！' },
+  { no:'4248', disc:20, desc:'キリン 一番搾り 350ml【1ケース】が20円OFF！' },
+  { no:'4249', disc:10, desc:'キリン 一番搾り 350ml【1ケース】が10円OFF！' },
+];
+
+var discountMap = {
+  none: 0,
+  product: function(){ return item1Coupons[item1Idx].disc + 40; },
+  new: 200,
+  threshold: 200,
+};
+var labelMap = {
+  product: '商品別クーポン割引',
+  new: '新規会員クーポン割引',
+  threshold: 'クーポン割引',
+};
+
+function getDiscount(){
+  var d = discountMap[current];
+  return typeof d === 'function' ? d() : (d || 0);
+}
+
+function updateSummary(){
+  var disc = getDiscount();
+  var total = BASE - disc;
+  var dr = document.getElementById('discountRow');
+  dr.style.display = disc > 0 ? 'flex' : 'none';
+  if (disc > 0) {
+    document.getElementById('discountLabel').textContent = labelMap[current] || 'クーポン割引';
+    document.getElementById('discountAmt').textContent = '−' + disc + '円';
+  }
+  var fmt = total.toLocaleString();
+  document.getElementById('totalAmt').textContent = fmt;
+  document.getElementById('barTotal').textContent = fmt;
+  document.getElementById('tax10').textContent = fmt + '円';
+}
+
+function selectCoupon(key){
+  current = key;
+  ['none','product','new','threshold'].forEach(function(k){
+    var rd = document.getElementById('rd-' + k);
+    if (rd) k === key ? rd.classList.add('on') : rd.classList.remove('on');
+  });
+  var det = document.getElementById('productDetail');
+  det.style.display = key === 'product' ? 'block' : 'none';
+  updateSummary();
+}
+
+// ── Coupon change sheet ──
+function openCouponSheet(){
+  pendingIdx = item1Idx;
+  var list = document.getElementById('couponSheetList');
+  list.innerHTML = item1Coupons.map(function(c, i){
+    return '<div class="coupon-sheet-item" onclick="pickItem(' + i + ')">' +
+      '<div class="radio-dot' + (i === pendingIdx ? ' on' : '') + '" id="srd-' + i + '"></div>' +
+      '<div><div class="coupon-sheet-num">クーポンNo.' + c.no + '</div>' +
+      '<div class="coupon-sheet-desc">' + c.desc + '</div></div>' +
+      '</div>';
+  }).join('');
+  openBsheet('couponSheet');
+}
+
+function pickItem(idx){
+  pendingIdx = idx;
+  item1Coupons.forEach(function(_, i){
+    var rd = document.getElementById('srd-' + i);
+    if (rd) i === idx ? rd.classList.add('on') : rd.classList.remove('on');
+  });
+}
+
+function confirmCouponChange(){
+  item1Idx = pendingIdx;
+  var c = item1Coupons[item1Idx];
+  document.getElementById('item1No').textContent = c.no;
+  document.getElementById('item1Disc').textContent = c.disc;
+  document.getElementById('productTotal').textContent = c.disc + 40;
+  closeBsheet('couponSheet');
+  updateSummary();
+}
+
+// ── Code input sheet ──
+document.getElementById('openCodeSheet').addEventListener('click', function(){
+  document.getElementById('codeInput').value = '';
+  document.getElementById('codeInput').classList.remove('error');
+  document.getElementById('codeError').classList.remove('show');
+  openBsheet('codeSheet');
+  setTimeout(function(){ document.getElementById('codeInput').focus(); }, 380);
+});
+
+function applyCode(){
+  var v = document.getElementById('codeInput').value.trim();
+  var err = document.getElementById('codeError');
+  var inp = document.getElementById('codeInput');
+  if (!v) {
+    err.textContent = 'クーポンコードを入力してください。';
+    err.classList.add('show'); inp.classList.add('error'); return;
+  }
+  if (v.toUpperCase() === 'KAKU200') {
+    inp.classList.remove('error'); err.classList.remove('show');
+    closeBsheet('codeSheet');
+    selectCoupon('new');
+  } else {
+    err.textContent = 'このクーポンコードは有効ではありません。';
+    err.classList.add('show'); inp.classList.add('error');
+  }
+}
+
+// ── Init ──
+selectCoupon('product');
+</script>
+</body>
+</html>
